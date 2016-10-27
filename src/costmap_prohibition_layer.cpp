@@ -220,7 +220,6 @@ bool CostmapProhibitionLayer::getPoint(XmlRpc::XmlRpcValue &val, geometry_msgs::
   try
   {
       // check if there a two values for the coordinate 
-      ROS_INFO_STREAM("Type: " << val.getType() << " Size: " << val.size());
       if (val.getType() == XmlRpc::XmlRpcValue::TypeArray && val.size() == 2)
       {
         auto convDouble = [](XmlRpc::XmlRpcValue &val) -> double
