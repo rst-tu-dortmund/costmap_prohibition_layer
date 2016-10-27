@@ -104,4 +104,4 @@ script:
   - catkin_make $( [ -f $CATKIN_OPTIONS ] && cat $CATKIN_OPTIONS )
   # Testing: Use both run_tests (to see the output) and test (to error out).
   - catkin_make run_tests  # This always returns 0, but looks pretty.
-- catkin_make test  # This will return non-zero if a test fails.
+  - catkin_make test  # This will return non-zero if a test fails.
