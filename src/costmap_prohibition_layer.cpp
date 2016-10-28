@@ -138,7 +138,8 @@ bool CostmapProhibitionLayer::parseProhibitionListFromYaml(ros::NodeHandle *nhan
           // add a line
           else if (param_yaml[i].size() == 2)
           {
-            if (param_yaml[i][0].getType() == XmlRpc::XmlRpcValue::TypeDouble)
+            if (param_yaml[i][0].getType() == XmlRpc::XmlRpcValue::TypeDouble ||
+	      param_yaml[i][0].getType() == XmlRpc::XmlRpcValue::TypeInt)
             {
               // add a lonely point
               geometry_msgs::Point point;
