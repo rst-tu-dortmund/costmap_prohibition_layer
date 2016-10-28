@@ -109,8 +109,9 @@ private:
   */
   bool getPoint(XmlRpc::XmlRpcValue& val, geometry_msgs::Point& point);
 
-  dynamic_reconfigure::Server<costmap_2d::GenericPluginConfig>* dsrv_;  // dynamic_reconfigure server for the costmap
-  std::mutex _parse_mutex;                                              // mutex for the YAML Import
+  dynamic_reconfigure::Server<costmap_2d::GenericPluginConfig>* dsrv_;   // dynamic_reconfigure server for the costmap
+  std::mutex _parse_mutex;                                               // mutex for the YAML Import
+  double _costmap_resolution;                                            // resolution of the overlayed costmap to create the thinnest line out of two points
   std::vector<geometry_msgs::Point> _prohibition_points;                 // vector to save the lonely points
   std::vector<std::vector<geometry_msgs::Point>> _prohibition_polygons;  // vecotr to save the polygons (including
                                                                          // lines)
