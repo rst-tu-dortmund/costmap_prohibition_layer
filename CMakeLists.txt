@@ -112,10 +112,6 @@ endif()
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES simple_layers
-#  CATKIN_DEPENDS costmap_2d dynamic_reconfigure roscpp
-#  DEPENDS system_lib
 )
 
 ###########
@@ -128,26 +124,9 @@ catkin_package(
 include_directories(${catkin_INCLUDE_DIRS} include)
 
 ## Declare a C++ library
-# add_library(simple_layers
-#   src/${PROJECT_NAME}/simple_layers.cpp
-# )
 
-## Add cmake target dependencies of the library
-## as an example, code may need to be generated before libraries
-## either from message generation or dynamic reconfigure
-# add_dependencies(simple_layers ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_library(costmap_prohibition_layer src/costmap_prohibition_layer.cpp)
 
-## Declare a C++ executable
-# add_executable(simple_layers_node src/simple_layers_node.cpp)
-
-## Add cmake target dependencies of the executable
-## same as for the library above
-# add_dependencies(simple_layers_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-
-## Specify libraries to link a library or executable target against
-# target_link_libraries(simple_layers_node
-#   ${catkin_LIBRARIES}
-# )
 
 ############
 ## Install ##
@@ -163,26 +142,24 @@ include_directories(${catkin_INCLUDE_DIRS} include)
 #   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 # )
 
+
 ## Mark executables and/or libraries for installation
-# install(TARGETS simple_layers simple_layers_node
-#   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
+install(TARGETS costmap_prohibition_layer
+   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+)
 
 ## Mark cpp header files for installation
-# install(DIRECTORY include/${PROJECT_NAME}/
-#   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-#   FILES_MATCHING PATTERN "*.h"
-#   PATTERN ".svn" EXCLUDE
-# )
+install(DIRECTORY include/${PROJECT_NAME}/
+   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+   #FILES_MATCHING PATTERN "*.h"
+   PATTERN ".svn" EXCLUDE
+)
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
-# install(FILES
-#   # myfile1
-#   # myfile2
-#   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
-# )
+install(FILES
+  costmap_plugins.xml
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+)
 
 #############
 ## Testing ##
@@ -197,4 +174,3 @@ include_directories(${catkin_INCLUDE_DIRS} include)
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
 
-add_library(costmap_prohibition_layer src/costmap_prohibition_layer.cpp)
