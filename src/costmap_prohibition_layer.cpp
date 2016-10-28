@@ -36,7 +36,6 @@
  * Author: Stephan Kurzawe
  *********************************************************************/
 
-
 #include <costmap_prohibition_layer/costmap_prohibition_layer.h>
 #include <pluginlib/class_list_macros.h>
 
@@ -68,7 +67,7 @@ void CostmapProhibitionLayer::onInitialize()
   // e.g.: "move_base/global_costmap/prohibition_layer/prohibition_areas"
   std::string params = "prohibition_areas";
   if (!parseProhibitionListFromYaml(&nh, params))
-      ROS_ERROR_STREAM("Reading all prohibition areas failed!");
+    ROS_ERROR_STREAM("Reading all prohibition areas failed!");
 }
 
 void CostmapProhibitionLayer::reconfigureCB(costmap_2d::GenericPluginConfig &config, uint32_t level)
@@ -76,7 +75,8 @@ void CostmapProhibitionLayer::reconfigureCB(costmap_2d::GenericPluginConfig &con
   enabled_ = config.enabled;
 }
 
-void CostmapProhibitionLayer::updateCosts(costmap_2d::Costmap2D &master_grid, int min_i, int min_j, int max_i, int max_j)
+void CostmapProhibitionLayer::updateCosts(costmap_2d::Costmap2D &master_grid, int min_i, int min_j, int max_i,
+                                          int max_j)
 {
   if (!enabled_)
     return;
@@ -147,50 +147,50 @@ bool CostmapProhibitionLayer::parseProhibitionListFromYaml(ros::NodeHandle *nhan
             }
             else
             {
-                // add a line!
-            geometry_msgs::Point point_A;
-            ret_val = getPoint(param_yaml[i][0], point_A);
-            vector_to_add.push_back(point_A);
+              // add a line!
+              geometry_msgs::Point point_A;
+              ret_val = getPoint(param_yaml[i][0], point_A);
+              vector_to_add.push_back(point_A);
 
-            geometry_msgs::Point point_B;
-            ret_val = getPoint(param_yaml[i][1], point_B);
-            vector_to_add.push_back(point_B);
+              geometry_msgs::Point point_B;
+              ret_val = getPoint(param_yaml[i][1], point_B);
+              vector_to_add.push_back(point_B);
 
-            // calculate the normal vector for AB
-            geometry_msgs::Point point_N;
-            point_N.x = point_B.y - point_A.y;
-            point_N.y = point_A.x - point_B.x;
+              // calculate the normal vector for AB
+              geometry_msgs::Point point_N;
+              point_N.x = point_B.y - point_A.y;
+              point_N.y = point_A.x - point_B.x;
 
-            // get the absolute value of N to normalize and get
-            // it to the length of the costmap resolution
-            double abs_N = sqrt(pow(point_N.x, 2) + pow(point_N.y, 2));
-            point_N.x = point_N.x / abs_N * _costmap_resolution;
-            point_N.y = point_N.y / abs_N * _costmap_resolution;
+              // get the absolute value of N to normalize and get
+              // it to the length of the costmap resolution
+              double abs_N = sqrt(pow(point_N.x, 2) + pow(point_N.y, 2));
+              point_N.x = point_N.x / abs_N * _costmap_resolution;
+              point_N.y = point_N.y / abs_N * _costmap_resolution;
 
-            // calculate the new points to get a polygon which can be filled
-            geometry_msgs::Point point;
-            point.x = point_A.x + point_N.x;
-            point.y = point_A.y + point_N.y;
-            vector_to_add.push_back(point);
+              // calculate the new points to get a polygon which can be filled
+              geometry_msgs::Point point;
+              point.x = point_A.x + point_N.x;
+              point.y = point_A.y + point_N.y;
+              vector_to_add.push_back(point);
 
-            point.x = point_B.x + point_N.x;
-            point.y = point_B.y + point_N.y;
-            vector_to_add.push_back(point);
+              point.x = point_B.x + point_N.x;
+              point.y = point_B.y + point_N.y;
+              vector_to_add.push_back(point);
 
-            _prohibition_polygons.push_back(vector_to_add);
+              _prohibition_polygons.push_back(vector_to_add);
             }
           }
           // add a point or add a polygon
           else if (param_yaml[i].size() >= 3)
           {
-              // add a polygon with any number of points
-              for (int j = 0; j < param_yaml[i].size(); ++j)
-              {
-                geometry_msgs::Point point;
-                ret_val = getPoint(param_yaml[i][j], point);
-                vector_to_add.push_back(point);
-              }
-              _prohibition_polygons.push_back(vector_to_add);
+            // add a polygon with any number of points
+            for (int j = 0; j < param_yaml[i].size(); ++j)
+            {
+              geometry_msgs::Point point;
+              ret_val = getPoint(param_yaml[i][j], point);
+              vector_to_add.push_back(point);
+            }
+            _prohibition_polygons.push_back(vector_to_add);
           }
         }
         else
@@ -219,27 +219,26 @@ bool CostmapProhibitionLayer::getPoint(XmlRpc::XmlRpcValue &val, geometry_msgs::
 {
   try
   {
-      // check if there a two values for the coordinate 
-      if (val.getType() == XmlRpc::XmlRpcValue::TypeArray && val.size() == 2)
+    // check if there a two values for the coordinate
+    if (val.getType() == XmlRpc::XmlRpcValue::TypeArray && val.size() == 2)
+    {
+      auto convDouble = [](XmlRpc::XmlRpcValue &val) -> double
       {
-        auto convDouble = [](XmlRpc::XmlRpcValue &val) -> double
-        {
         if (val.getType() == XmlRpc::XmlRpcValue::TypeInt)  // XmlRpc cannot cast int to double
-            return int(val);
-        return val;  // if not double, an exception is thrown;     
-        };
+          return int(val);
+        return val;  // if not double, an exception is thrown;
+      };
 
-        point.x = convDouble(val[0]);
-        point.y = convDouble(val[1]);
-        point.z = 0.0;
-        return true;
-      }
-      else
-      {
-          ROS_ERROR_STREAM("Prohibition_Layer: A point has to consist two values!");
-          return false;
-      }
-    
+      point.x = convDouble(val[0]);
+      point.y = convDouble(val[1]);
+      point.z = 0.0;
+      return true;
+    }
+    else
+    {
+      ROS_ERROR_STREAM("Prohibition_Layer: A point has to consist two values!");
+      return false;
+    }
   }
   catch (const XmlRpc::XmlRpcException &ex)
   {
