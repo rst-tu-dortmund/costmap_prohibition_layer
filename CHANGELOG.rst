@@ -2,8 +2,8 @@
 Changelog for package costmap_prohibition_layer
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.0.4 (2016-10-30)
+------------------
 * Enable recognizing Integer values in single points
 * restored deleted line
 
