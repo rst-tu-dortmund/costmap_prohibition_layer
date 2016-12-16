@@ -60,19 +60,53 @@ void CostmapProhibitionLayer::onInitialize()
   dsrv_->setCallback(cb);
 
   // get a pointer to the layered costmap and save resolution
-  costmap_2d::Costmap2D *layered_costmap = layered_costmap_->getCostmap();
-  _costmap_resolution = layered_costmap->getResolution();
+  costmap_2d::Costmap2D *costmap = layered_costmap_->getCostmap();
+  _costmap_resolution = costmap->getResolution();
+
+  // set initial bounds
+  _min_x = _min_y = _max_x = _max_y = 0;
+  
+  _source_frame = "map";
+  nh.param("source_frame", _source_frame, _source_frame);
 
   // reading the prohibition areas out of the namespace of this plugin!
   // e.g.: "move_base/global_costmap/prohibition_layer/prohibition_areas"
   std::string params = "prohibition_areas";
   if (!parseProhibitionListFromYaml(&nh, params))
-    ROS_ERROR_STREAM("Reading all prohibition areas failed!");
+    ROS_ERROR_STREAM("Reading prohibition areas from '" << nh.getNamespace() << "/" << params << "' failed!");
+  
+  // compute map bounds for the current set of prohibition areas.
+  computeMapBounds();
+  
+  ROS_INFO("CostmapProhibitionLayer initialized.");
 }
 
 void CostmapProhibitionLayer::reconfigureCB(costmap_2d::GenericPluginConfig &config, uint32_t level)
 {
   enabled_ = config.enabled;
+}
+
+
+void CostmapProhibitionLayer::updateBounds(double robot_x, double robot_y, double robot_yaw, 
+                                           double *min_x, double *min_y, double *max_x, double *max_y)
+{
+    if (!enabled_)
+        return;
+    
+    if (_prohibition_points.empty() && _prohibition_polygons.empty())
+        return;
+
+    transformProhibitionAreas();
+    computeMapBounds();
+    
+//     ROS_INFO_STREAM("robotx: " << robot_x << " y: " << robot_y << " yaw: " << robot_yaw);
+//     ROS_INFO_STREAM("origin_x: " << layered_costmap_->getCostmap()->getOriginX() << " origin_y: " << layered_costmap_->getCostmap()->getOriginY());
+    
+    *min_x = std::min(*min_x, _min_x);
+    *min_y = std::min(*min_y, _min_y);
+    *max_x = std::max(*max_x, _max_x);
+    *max_y = std::max(*max_y, _max_y);
+
 }
 
 void CostmapProhibitionLayer::updateCosts(costmap_2d::Costmap2D &master_grid, int min_i, int min_j, int max_i,
@@ -82,24 +116,137 @@ void CostmapProhibitionLayer::updateCosts(costmap_2d::Costmap2D &master_grid, in
     return;
 
   // set costs of polygons
-  for (int i = 0; i < _prohibition_polygons.size(); i++)
+  for (int i = 0; i < _prohibition_polygons_global.size(); i++)
   {
-    if (!master_grid.setConvexPolygonCost(_prohibition_polygons[i], LETHAL_OBSTACLE))
-      ROS_ERROR_STREAM("Prohibition Layer: Polygon Cost couldn't be filled!");
+//     if (!master_grid.setConvexPolygonCost(_prohibition_polygons[i], LETHAL_OBSTACLE))
+//       ROS_ERROR_STREAM("Prohibition Layer: Polygon Cost couldn't be filled!");
+      
+      
+      // we assume the polygon is given in the global_frame... we need to transform it to map coordinates
+   std::vector<costmap_2d::MapLocation> map_polygon;
+   for (unsigned int j = 0; j < _prohibition_polygons_global[i].size(); ++j)
+   {
+//      int x;
+//      int y;
+     costmap_2d::MapLocation loc;
+//      master_grid.worldToMapEnforceBounds(_prohibition_polygons_global[i].at(j).x, _prohibition_polygons_global[i].at(j).y, x, y);
+     if (!master_grid.worldToMap(_prohibition_polygons_global[i].at(j).x, _prohibition_polygons_global[i].at(j).y, loc.x, loc.y))
+     {
+//        ROS_WARN("Polygon lies outside map bounds, so we can't fill it");
+       continue;
+// //        return false;
+     }
+       
+//      if (x>= 0 && y>=0)
+//      {
+//          loc.x = (unsigned int)x;
+//          loc.y = (unsigned int)y;
+         map_polygon.push_back(loc);
+//      }
+
+   }
+//           ROS_INFO_STREAM("origin: " << master_grid.getOriginX() << "," << master_grid.getOriginY());
+    
+    std::vector<costmap_2d::MapLocation> polygon_cells;
+    
+    // get the cells that fill the polygon
+    master_grid.convexFillCells(map_polygon, polygon_cells);
+ 
+   // set the cost of those cells
+   for (unsigned int i = 0; i < polygon_cells.size(); ++i)
+   {
+       master_grid.setCost(polygon_cells[i].x, polygon_cells[i].y, LETHAL_OBSTACLE);
+   }
   }
 
   // set cost of points
-  for (int i = 0; i < _prohibition_points.size(); i++)
+  for (int i = 0; i < _prohibition_points_global.size(); i++)
   {
     unsigned int mx;
     unsigned int my;
-    if (master_grid.worldToMap(_prohibition_points[i].x, _prohibition_points[i].y, mx, my))
+    if (master_grid.worldToMap(_prohibition_points_global[i].x, _prohibition_points_global[i].y, mx, my))
     {
       master_grid.setCost(mx, my, LETHAL_OBSTACLE);
     }
-    else
-      ROS_ERROR_STREAM("Prohibition Layer: Point Cost couldn't be set!");
+//     else
+//       ROS_ERROR_STREAM("Prohibition Layer: Point Cost couldn't be set!");
   }
+}
+
+void CostmapProhibitionLayer::computeMapBounds()
+{
+  // reset bounds
+  _min_x = _min_y = _max_x = _max_y = 0;
+    
+  // iterate polygons
+  for (int i = 0; i < _prohibition_polygons_global.size(); ++i)
+  {
+    for (int j=0; j < _prohibition_polygons_global.at(i).size(); ++j)
+    {
+      double px = _prohibition_polygons_global.at(i).at(j).x;
+      double py = _prohibition_polygons_global.at(i).at(j).y;
+      _min_x = std::min(px, _min_x);
+      _min_y = std::min(py, _min_y);
+      _max_x = std::max(px, _max_x);
+      _max_y = std::max(py, _max_y);
+    }
+  }
+
+  // iterate points
+  for (int i = 0; i < _prohibition_points_global.size(); ++i)
+  {
+      double px = _prohibition_points_global.at(i).x;
+      double py = _prohibition_points_global.at(i).y;
+      _min_x = std::min(px, _min_x);
+      _min_y = std::min(py, _min_y);
+      _max_x = std::max(px, _max_x);
+      _max_y = std::max(py, _max_y);
+  }
+}
+
+bool CostmapProhibitionLayer::transformProhibitionAreas()
+{
+    tf::StampedTransform tf_source_to_global;
+    try
+    {
+        tf_->waitForTransform(layered_costmap_->getGlobalFrameID(), _source_frame, ros::Time::now(), ros::Duration(3));
+        tf_->lookupTransform(layered_costmap_->getGlobalFrameID(), _source_frame, ros::Time(0), tf_source_to_global);
+    }
+    catch(const tf::TransformException& ex)
+    {
+        ROS_ERROR_STREAM("CostmapProhibitionLayer: " << ex.what());
+        return false;
+    }
+    
+    // TODO: only renew if transformation has changed!   
+    
+    // iterate polygons
+    _prohibition_polygons_global.resize(_prohibition_polygons.size());
+    for (int i = 0; i < _prohibition_polygons.size(); ++i)
+    {
+        _prohibition_polygons_global[i].resize(_prohibition_polygons.at(i).size());
+        for (int j=0; j < _prohibition_polygons.at(i).size(); ++j)
+        {
+            transformPoint(tf_source_to_global, _prohibition_polygons.at(i).at(j), _prohibition_polygons_global.at(i).at(j));
+        }
+    }
+
+    // iterate points
+    _prohibition_points_global.resize(_prohibition_points.size());
+    for (int i = 0; i < _prohibition_points.size(); ++i)
+    {
+        transformPoint(tf_source_to_global, _prohibition_points[i], _prohibition_points_global[i]);
+    }    
+    return true;
+}
+
+
+void CostmapProhibitionLayer::transformPoint(const tf::StampedTransform& transform, const geometry_msgs::Point& pt_in, geometry_msgs::Point& pt_out)
+{
+    tf::Stamped<tf::Point> pin, pout;
+    tf::pointMsgToTF(pt_in, pin);
+    pout.setData(transform * pin);
+    tf::pointTFToMsg(pout, pt_out);     
 }
 
 // load prohibition positions out of the rosparam server

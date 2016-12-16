@@ -70,6 +70,13 @@ public:
   virtual void onInitialize();
 
   /**
+ * This is called by the LayeredCostmap to poll this plugin
+ * as to how much of the costmap it needs to update.
+ * Each layer can increase the size of this bounds. 
+ */
+  virtual void updateBounds(double robot_x, double robot_y, double robot_yaw, double *min_x, double *min_y, double *max_x, double *max_y);
+  
+    /**
  * function which get called at every cost updating procdure
  * of the overlayed costmap. The before readed costs will get
  * filled
@@ -82,6 +89,12 @@ private:
     */
   void reconfigureCB(costmap_2d::GenericPluginConfig& config, uint32_t level);
 
+    
+  void computeMapBounds();
+  
+  bool transformProhibitionAreas();
+  void transformPoint(const tf::StampedTransform& transform, const geometry_msgs::Point& pt_in, geometry_msgs::Point& pt_out);
+  
   /**
    * read the prohibition areas in YAML-Format from the
    * ROS parameter server in the namespace of this
@@ -109,12 +122,15 @@ private:
   */
   bool getPoint(XmlRpc::XmlRpcValue& val, geometry_msgs::Point& point);
 
-  dynamic_reconfigure::Server<costmap_2d::GenericPluginConfig>* dsrv_;   // dynamic_reconfigure server for the costmap
-  std::mutex _parse_mutex;                                               // mutex for the YAML Import
-  double _costmap_resolution;                                            // resolution of the overlayed costmap to create the thinnest line out of two points
-  std::vector<geometry_msgs::Point> _prohibition_points;                 // vector to save the lonely points
-  std::vector<std::vector<geometry_msgs::Point>> _prohibition_polygons;  // vecotr to save the polygons (including
-                                                                         // lines)
+  dynamic_reconfigure::Server<costmap_2d::GenericPluginConfig>* dsrv_;          //!< dynamic_reconfigure server for the costmap
+  std::mutex _parse_mutex;                                                      //!< mutex for the YAML Import
+  double _costmap_resolution;                                                   //!< resolution of the overlayed costmap to create the thinnest line out of two points
+  std::string _source_frame;                                                    //!< coordinate frame in which the prohibition points and polygons are defined
+  std::vector<geometry_msgs::Point> _prohibition_points;                        //!< vector to save the lonely points in source coordinates
+  std::vector<geometry_msgs::Point> _prohibition_points_global;                 //!< vector to save the lonely points in global map coordinates
+  std::vector<std::vector<geometry_msgs::Point>> _prohibition_polygons;         //!< vector to save the polygons (including lines) in source coordinates
+  std::vector<std::vector<geometry_msgs::Point>> _prohibition_polygons_global;  //!< vector to save the polygons (including lines) in global coordinates
+  double _min_x, _min_y, _max_x, _max_y;                                        //!< cached map bounds
 };
 }
 #endif
