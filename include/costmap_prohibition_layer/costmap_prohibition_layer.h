@@ -71,85 +71,94 @@ public:
   CostmapProhibitionLayer();
 
   /**
- * function which get called at initializing the costmap
- * define the reconfige callback, get the reoslution
- * and read the prohibitions from the ros-parameter server
- */
+   * function which get called at initializing the costmap
+   * define the reconfige callback, get the reoslution
+   * and read the prohibitions from the ros-parameter server
+   */
   virtual void onInitialize();
 
   /**
- * This is called by the LayeredCostmap to poll this plugin
- * as to how much of the costmap it needs to update.
- * Each layer can increase the size of this bounds. 
- */
-  virtual void updateBounds(double robot_x, double robot_y, double robot_yaw, double *min_x, double *min_y, double *max_x, double *max_y);
+   * This is called by the LayeredCostmap to poll this plugin
+   * as to how much of the costmap it needs to update.
+   * Each layer can increase the size of this bounds. 
+   */
+  virtual void updateBounds(double robot_x, double robot_y, double robot_yaw, 
+                            double *min_x, double *min_y, double *max_x, double *max_y);
   
-    /**
- * function which get called at every cost updating procdure
- * of the overlayed costmap. The before readed costs will get
- * filled
- */
-  virtual void updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j);
+  /**
+   * function which get called at every cost updating procdure
+   * of the overlayed costmap. The before readed costs will get
+   * filled
+   */
+  virtual void updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int min_j,
+                           int max_i, int max_j);
 
 private:
+    
   /**
    * overlayed reconfigure callback function
-    */
+   */
   void reconfigureCB(costmap_2d::GenericPluginConfig& config, uint32_t level);
 
-    
+  /**
+   * Compute bounds in world coordinates for the current set of points and polygons.
+   * The result is stored in class members _min_x, _min_y, _max_x and _max_y.
+   */ 
   void computeMapBounds();
   
-  bool transformProhibitionAreas();
-  void transformPoint(const tf::StampedTransform& transform, const geometry_msgs::Point& pt_in, geometry_msgs::Point& pt_out);
+  /**
+   * Set cost in a Costmap2D for a polygon (polygon may be located outside bounds)
+   * 
+   * @param master_grid    reference to the Costmap2D object
+   * @param polygon        polygon defined by a vector of points (in world coordinates)
+   * @param cost           the cost value to be set (0,255)
+   * @param min_i          minimum bound on the horizontal map index/coordinate
+   * @param min_j          minimum bound on the vertical map index/coordinate
+   * @param max_i          maximum bound on the horizontal map index/coordinate
+   * @param max_j          maximum bound on the vertical map index/coordinate
+   * @param fill_polygon   if true, tue cost for the interior of the polygon will be set as well    
+   */
+  void setPolygonCost(costmap_2d::Costmap2D &master_grid, const std::vector<geometry_msgs::Point>& polygon,
+                      unsigned char cost, int min_i, int min_j, int max_i, int max_j, bool fill_polygon);
   
-  void setPolygonCost(costmap_2d::Costmap2D &master_grid, const std::vector<geometry_msgs::Point>& polygon, unsigned char cost,
-                      int min_i, int min_j, int max_i, int max_j);
+  /**
+   * Convert polygon (in map coordinates) to a set of cells in the map
+   * 
+   * @remarks This method is mainly based on Costmap2D::convexFillCells() but accounts
+   *          for a self-implemented polygonOutlineCells() method and allows negative map coordinates
+   * 
+   * @param polygon             polygon defined  by a vector of map coordinates
+   * @param[out] polygon_cells  new cells in map coordinates are pushed back on this container
+   * @param fill                if true, the interior of the polygon will be considered as well
+   */
+  void rasterizePolygon(const std::vector<PointInt>& polygon, std::vector<PointInt>& polygon_cells, bool fill);
   
-  void polygonOutlineCells(const std::vector<PointInt>& polygon, std::vector<PointInt>& polygon_cells)
-  {
-     for (unsigned int i = 0; i < polygon.size() - 1; ++i)
-     {
-       raytrace(polygon[i].x, polygon[i].y, polygon[i + 1].x, polygon[i + 1].y, polygon_cells);
-     }
-     if (!polygon.empty())
-     {
-       unsigned int last_index = polygon.size() - 1;
-       // we also need to close the polygon by going from the last point to the first
-       raytrace(polygon[last_index].x, polygon[last_index].y, polygon[0].x, polygon[0].y, polygon_cells);
-     }
-  }
+  /**
+   * Extract the boundary of a polygon in terms of map cells
+   * 
+   * @remarks This method is based on Costmap2D::polygonOutlineCells() but accounts
+   *          for a self-implemented raytrace algorithm and allows negative map coordinates
+   * 
+   * @param polygon             polygon defined  by a vector of map coordinates
+   * @param[out] polygon_cells  new cells in map coordinates are pushed back on this container
+   */
+  void polygonOutlineCells(const std::vector<PointInt>& polygon, std::vector<PointInt>& polygon_cells);
   
-  void raytrace(int x0, int y0, int x1, int y1, std::vector<PointInt>& cells)
-{
-    int dx = abs(x1 - x0);
-    int dy = abs(y1 - y0);
-    PointInt pt;
-    pt.x = x0;
-    pt.y = y0;
-    int n = 1 + dx + dy;
-    int x_inc = (x1 > x0) ? 1 : -1;
-    int y_inc = (y1 > y0) ? 1 : -1;
-    int error = dx - dy;
-    dx *= 2;
-    dy *= 2;
-    
-    for (; n > 0; --n)
-    {
-         cells.push_back(pt);
-
-        if (error > 0)
-        {
-            pt.x += x_inc;
-            error -= dy;
-        }
-        else
-        {
-            pt.y += y_inc;
-            error += dx;
-        }
-    }
-}
+  /**
+   * Rasterize line between two map coordinates into a set of cells
+   * 
+   * @remarks Since Costmap2D::raytraceLine() is based on the size_x and since we want to rasterize 
+   *          polygons that might also be located outside map bounds we provide a modified raytrace
+   *          implementation (also Bresenham) based on the integer version presented here:
+   *          http://playtechs.blogspot.de/2007/03/raytracing-on-grid.html
+   * 
+   * @param x0          line start x-coordinate (map frame)
+   * @param y0          line start y-coordinate (map frame)
+   * @param x1          line end x-coordinate (map frame)
+   * @param y1          line end y-coordinate (map frame)
+   * @param[out] cells  new cells in map coordinates are pushed back on this container
+   */
+  void raytrace(int x0, int y0, int x1, int y1, std::vector<PointInt>& cells);
 
   
   /**
@@ -182,11 +191,9 @@ private:
   dynamic_reconfigure::Server<costmap_2d::GenericPluginConfig>* dsrv_;          //!< dynamic_reconfigure server for the costmap
   std::mutex _parse_mutex;                                                      //!< mutex for the YAML Import
   double _costmap_resolution;                                                   //!< resolution of the overlayed costmap to create the thinnest line out of two points
-  std::string _source_frame;                                                    //!< coordinate frame in which the prohibition points and polygons are defined
+  bool _fill_polygons;                                                          //!< if true, all cells that are located in the interior of polygons are marked as obstacle as well
   std::vector<geometry_msgs::Point> _prohibition_points;                        //!< vector to save the lonely points in source coordinates
-  std::vector<geometry_msgs::Point> _prohibition_points_global;                 //!< vector to save the lonely points in global map coordinates
   std::vector<std::vector<geometry_msgs::Point>> _prohibition_polygons;         //!< vector to save the polygons (including lines) in source coordinates
-  std::vector<std::vector<geometry_msgs::Point>> _prohibition_polygons_global;  //!< vector to save the polygons (including lines) in global coordinates
   double _min_x, _min_y, _max_x, _max_y;                                        //!< cached map bounds
 };
 }
