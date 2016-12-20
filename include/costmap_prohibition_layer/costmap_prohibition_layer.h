@@ -54,6 +54,14 @@
 
 namespace costmap_prohibition_layer_namespace
 {
+    
+// point with integer coordinates  
+struct PointInt
+{
+    int x;
+    int y;
+};
+    
 class CostmapProhibitionLayer : public costmap_2d::Layer
 {
 public:
@@ -94,6 +102,55 @@ private:
   
   bool transformProhibitionAreas();
   void transformPoint(const tf::StampedTransform& transform, const geometry_msgs::Point& pt_in, geometry_msgs::Point& pt_out);
+  
+  void setPolygonCost(costmap_2d::Costmap2D &master_grid, const std::vector<geometry_msgs::Point>& polygon, unsigned char cost,
+                      int min_i, int min_j, int max_i, int max_j);
+  
+  void polygonOutlineCells(const std::vector<PointInt>& polygon, std::vector<PointInt>& polygon_cells)
+  {
+     for (unsigned int i = 0; i < polygon.size() - 1; ++i)
+     {
+       raytrace(polygon[i].x, polygon[i].y, polygon[i + 1].x, polygon[i + 1].y, polygon_cells);
+     }
+     if (!polygon.empty())
+     {
+       unsigned int last_index = polygon.size() - 1;
+       // we also need to close the polygon by going from the last point to the first
+       raytrace(polygon[last_index].x, polygon[last_index].y, polygon[0].x, polygon[0].y, polygon_cells);
+     }
+  }
+  
+  void raytrace(int x0, int y0, int x1, int y1, std::vector<PointInt>& cells)
+{
+    int dx = abs(x1 - x0);
+    int dy = abs(y1 - y0);
+    PointInt pt;
+    pt.x = x0;
+    pt.y = y0;
+    int n = 1 + dx + dy;
+    int x_inc = (x1 > x0) ? 1 : -1;
+    int y_inc = (y1 > y0) ? 1 : -1;
+    int error = dx - dy;
+    dx *= 2;
+    dy *= 2;
+    
+    for (; n > 0; --n)
+    {
+         cells.push_back(pt);
+
+        if (error > 0)
+        {
+            pt.x += x_inc;
+            error -= dy;
+        }
+        else
+        {
+            pt.y += y_inc;
+            error += dx;
+        }
+    }
+}
+
   
   /**
    * read the prohibition areas in YAML-Format from the

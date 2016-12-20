@@ -101,7 +101,7 @@ void CostmapProhibitionLayer::updateBounds(double robot_x, double robot_y, doubl
     
 //     ROS_INFO_STREAM("robotx: " << robot_x << " y: " << robot_y << " yaw: " << robot_yaw);
 //     ROS_INFO_STREAM("origin_x: " << layered_costmap_->getCostmap()->getOriginX() << " origin_y: " << layered_costmap_->getCostmap()->getOriginY());
-    
+//     ROS_INFO_STREAM("min_x: " << *min_x << "/" << _min_x << ", " << "min_y: " << *min_y << "/" << _min_y << ", " << "max_x: " << *max_x << "/" << _max_x << ", " << "max_y: " << *max_y << "/" << _max_y);
     *min_x = std::min(*min_x, _min_x);
     *min_y = std::min(*min_y, _min_y);
     *max_x = std::max(*max_x, _max_x);
@@ -109,58 +109,20 @@ void CostmapProhibitionLayer::updateBounds(double robot_x, double robot_y, doubl
 
 }
 
-void CostmapProhibitionLayer::updateCosts(costmap_2d::Costmap2D &master_grid, int min_i, int min_j, int max_i,
-                                          int max_j)
+void CostmapProhibitionLayer::updateCosts(costmap_2d::Costmap2D &master_grid, int min_i, int min_j, int max_i, int max_j)
 {
   if (!enabled_)
     return;
 
   // set costs of polygons
-  for (int i = 0; i < _prohibition_polygons_global.size(); i++)
+  for (int i = 0; i < _prohibition_polygons_global.size(); ++i)
   {
-//     if (!master_grid.setConvexPolygonCost(_prohibition_polygons[i], LETHAL_OBSTACLE))
-//       ROS_ERROR_STREAM("Prohibition Layer: Polygon Cost couldn't be filled!");
-      
-      
-      // we assume the polygon is given in the global_frame... we need to transform it to map coordinates
-   std::vector<costmap_2d::MapLocation> map_polygon;
-   for (unsigned int j = 0; j < _prohibition_polygons_global[i].size(); ++j)
-   {
-//      int x;
-//      int y;
-     costmap_2d::MapLocation loc;
-//      master_grid.worldToMapEnforceBounds(_prohibition_polygons_global[i].at(j).x, _prohibition_polygons_global[i].at(j).y, x, y);
-     if (!master_grid.worldToMap(_prohibition_polygons_global[i].at(j).x, _prohibition_polygons_global[i].at(j).y, loc.x, loc.y))
-     {
-//        ROS_WARN("Polygon lies outside map bounds, so we can't fill it");
-       continue;
-// //        return false;
-     }
-       
-//      if (x>= 0 && y>=0)
-//      {
-//          loc.x = (unsigned int)x;
-//          loc.y = (unsigned int)y;
-         map_polygon.push_back(loc);
-//      }
-
-   }
-//           ROS_INFO_STREAM("origin: " << master_grid.getOriginX() << "," << master_grid.getOriginY());
-    
-    std::vector<costmap_2d::MapLocation> polygon_cells;
-    
-    // get the cells that fill the polygon
-    master_grid.convexFillCells(map_polygon, polygon_cells);
- 
-   // set the cost of those cells
-   for (unsigned int i = 0; i < polygon_cells.size(); ++i)
-   {
-       master_grid.setCost(polygon_cells[i].x, polygon_cells[i].y, LETHAL_OBSTACLE);
-   }
+      setPolygonCost(master_grid, _prohibition_polygons_global[i], LETHAL_OBSTACLE, min_i, min_j, max_i, max_j);
   }
-
+      
+//       ROS_INFO_STREAM("mini: " << min_i << " minj: " << min_j << " maxi: " << max_i << " maxj: " << max_j);
   // set cost of points
-  for (int i = 0; i < _prohibition_points_global.size(); i++)
+  for (int i = 0; i < _prohibition_points_global.size(); ++i)
   {
     unsigned int mx;
     unsigned int my;
@@ -248,6 +210,64 @@ void CostmapProhibitionLayer::transformPoint(const tf::StampedTransform& transfo
     pout.setData(transform * pin);
     tf::pointTFToMsg(pout, pt_out);     
 }
+
+void CostmapProhibitionLayer::setPolygonCost(costmap_2d::Costmap2D &master_grid, const std::vector<geometry_msgs::Point>& polygon, unsigned char cost,
+                                             int min_i, int min_j, int max_i, int max_j)
+{
+   std::vector<PointInt> map_polygon;
+   int xoffset = 0;
+   int yoffset = 0;
+   for (unsigned int i = 0; i < polygon.size(); ++i)
+   {
+     PointInt loc;
+     master_grid.worldToMapNoBounds(polygon[i].x, polygon[i].y, loc.x, loc.y);
+//      int di = loc.x-min_i;
+//      if (di < xoffset)
+//          xoffset = di;
+//      int dj = loc.y-min_j;
+//      if (dj < yoffset)
+//          yoffset = dj;
+     map_polygon.push_back(loc);
+   }
+//    xoffset = std::abs(xoffset);
+//    yoffset = std::abs(yoffset);
+//    ROS_INFO_STREAM("xoffset: " << xoffset << ", y: " << yoffset);
+    // transform points to allow its representation as unsigned int (the costmap_2d algorithms accept only unsigned int values)
+    std::vector<PointInt> map_polygon_shifted(map_polygon.size());
+    for (unsigned int i = 0; i < map_polygon.size(); ++i)
+    {
+        map_polygon_shifted[i].x = map_polygon[i].x + xoffset;
+        map_polygon_shifted[i].y = map_polygon[i].y + yoffset;
+    }
+   
+   
+//    if (points_inside == 0)
+//    {
+//        // all points are outside bounds, do not set any cost
+//        // we assume that our region is not contained in the interior of any "huge" polygon
+//        return;
+//    }
+
+    std::vector<PointInt> polygon_cells;
+    
+    // get the cells that fill the polygon
+//     master_grid.convexFillCells(map_polygon_shifted, polygon_cells);
+  polygonOutlineCells(map_polygon_shifted, polygon_cells);
+    
+   // set the cost of those cells
+   for (unsigned int i = 0; i < polygon_cells.size(); ++i)
+   {
+       int mx = polygon_cells[i].x - xoffset;
+       int my = polygon_cells[i].y - yoffset;
+       // check if point is outside bounds
+       if (mx < min_i || mx >= max_i)
+           continue;
+       if (my < min_j || my >= max_j)
+           continue;
+       master_grid.setCost(mx, my, cost);
+   }
+}
+
 
 // load prohibition positions out of the rosparam server
 bool CostmapProhibitionLayer::parseProhibitionListFromYaml(ros::NodeHandle *nhandle, const std::string &param)
