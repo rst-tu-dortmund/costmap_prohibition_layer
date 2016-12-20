@@ -215,50 +215,23 @@ void CostmapProhibitionLayer::setPolygonCost(costmap_2d::Costmap2D &master_grid,
                                              int min_i, int min_j, int max_i, int max_j)
 {
    std::vector<PointInt> map_polygon;
-   int xoffset = 0;
-   int yoffset = 0;
    for (unsigned int i = 0; i < polygon.size(); ++i)
    {
      PointInt loc;
      master_grid.worldToMapNoBounds(polygon[i].x, polygon[i].y, loc.x, loc.y);
-//      int di = loc.x-min_i;
-//      if (di < xoffset)
-//          xoffset = di;
-//      int dj = loc.y-min_j;
-//      if (dj < yoffset)
-//          yoffset = dj;
      map_polygon.push_back(loc);
    }
-//    xoffset = std::abs(xoffset);
-//    yoffset = std::abs(yoffset);
-//    ROS_INFO_STREAM("xoffset: " << xoffset << ", y: " << yoffset);
-    // transform points to allow its representation as unsigned int (the costmap_2d algorithms accept only unsigned int values)
-    std::vector<PointInt> map_polygon_shifted(map_polygon.size());
-    for (unsigned int i = 0; i < map_polygon.size(); ++i)
-    {
-        map_polygon_shifted[i].x = map_polygon[i].x + xoffset;
-        map_polygon_shifted[i].y = map_polygon[i].y + yoffset;
-    }
-   
-   
-//    if (points_inside == 0)
-//    {
-//        // all points are outside bounds, do not set any cost
-//        // we assume that our region is not contained in the interior of any "huge" polygon
-//        return;
-//    }
-
+  
     std::vector<PointInt> polygon_cells;
     
     // get the cells that fill the polygon
-//     master_grid.convexFillCells(map_polygon_shifted, polygon_cells);
-  polygonOutlineCells(map_polygon_shifted, polygon_cells);
+    polygonOutlineCells(map_polygon, polygon_cells);
     
    // set the cost of those cells
    for (unsigned int i = 0; i < polygon_cells.size(); ++i)
    {
-       int mx = polygon_cells[i].x - xoffset;
-       int my = polygon_cells[i].y - yoffset;
+       int mx = polygon_cells[i].x;
+       int my = polygon_cells[i].y;
        // check if point is outside bounds
        if (mx < min_i || mx >= max_i)
            continue;
