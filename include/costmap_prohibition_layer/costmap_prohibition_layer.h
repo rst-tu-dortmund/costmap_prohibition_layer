@@ -47,7 +47,7 @@
 #include <ros/ros.h>
 #include <costmap_2d/layer.h>
 #include <costmap_2d/layered_costmap.h>
-#include <costmap_2d/GenericPluginConfig.h>
+#include <costmap_prohibition_layer/CostmapProhibitionLayerConfig.h>
 #include <dynamic_reconfigure/server.h>
 
 #include <unordered_map>
@@ -65,11 +65,16 @@ struct PointInt
 class CostmapProhibitionLayer : public costmap_2d::Layer
 {
 public:
+    
   /**
-   * unused constructor
+   * default constructor
    */
   CostmapProhibitionLayer();
 
+  /**
+   * destructor
+   */
+  virtual ~CostmapProhibitionLayer();
   /**
    * function which get called at initializing the costmap
    * define the reconfige callback, get the reoslution
@@ -98,7 +103,7 @@ private:
   /**
    * overlayed reconfigure callback function
    */
-  void reconfigureCB(costmap_2d::GenericPluginConfig& config, uint32_t level);
+  void reconfigureCB(CostmapProhibitionLayerConfig& config, uint32_t level);
 
   /**
    * Compute bounds in world coordinates for the current set of points and polygons.
@@ -188,7 +193,7 @@ private:
   */
   bool getPoint(XmlRpc::XmlRpcValue& val, geometry_msgs::Point& point);
 
-  dynamic_reconfigure::Server<costmap_2d::GenericPluginConfig>* dsrv_;          //!< dynamic_reconfigure server for the costmap
+  dynamic_reconfigure::Server<CostmapProhibitionLayerConfig>* _dsrv;          //!< dynamic_reconfigure server for the costmap
   std::mutex _parse_mutex;                                                      //!< mutex for the YAML Import
   double _costmap_resolution;                                                   //!< resolution of the overlayed costmap to create the thinnest line out of two points
   bool _fill_polygons;                                                          //!< if true, all cells that are located in the interior of polygons are marked as obstacle as well

@@ -46,8 +46,14 @@ using costmap_2d::LETHAL_OBSTACLE;
 namespace costmap_prohibition_layer_namespace
 {
     
-CostmapProhibitionLayer::CostmapProhibitionLayer()
+CostmapProhibitionLayer::CostmapProhibitionLayer() : _dsrv(NULL)
 {
+}
+
+CostmapProhibitionLayer::~CostmapProhibitionLayer()
+{
+    if (_dsrv!=NULL)
+        delete _dsrv;
 }
 
 void CostmapProhibitionLayer::onInitialize()
@@ -55,10 +61,10 @@ void CostmapProhibitionLayer::onInitialize()
   ros::NodeHandle nh("~/" + name_);
   current_ = true;
 
-  dsrv_ = new dynamic_reconfigure::Server<costmap_2d::GenericPluginConfig>(nh);
-  dynamic_reconfigure::Server<costmap_2d::GenericPluginConfig>::CallbackType cb =
+  _dsrv = new dynamic_reconfigure::Server<CostmapProhibitionLayerConfig>(nh);
+  dynamic_reconfigure::Server<CostmapProhibitionLayerConfig>::CallbackType cb =
       boost::bind(&CostmapProhibitionLayer::reconfigureCB, this, _1, _2);
-  dsrv_->setCallback(cb);
+  _dsrv->setCallback(cb);
 
   // get a pointer to the layered costmap and save resolution
   costmap_2d::Costmap2D *costmap = layered_costmap_->getCostmap();
@@ -82,9 +88,10 @@ void CostmapProhibitionLayer::onInitialize()
   ROS_INFO("CostmapProhibitionLayer initialized.");
 }
 
-void CostmapProhibitionLayer::reconfigureCB(costmap_2d::GenericPluginConfig &config, uint32_t level)
+void CostmapProhibitionLayer::reconfigureCB(CostmapProhibitionLayerConfig &config, uint32_t level)
 {
   enabled_ = config.enabled;
+  _fill_polygons = config.fill_polygons;
 }
 
 

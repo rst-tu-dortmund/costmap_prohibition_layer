@@ -97,10 +97,9 @@ endif()
 ##     and list every .cfg file to be processed
 
 ## Generate dynamic reconfigure parameters in the 'cfg' folder
-# generate_dynamic_reconfigure_options(
-#   cfg/DynReconf1.cfg
-#   cfg/DynReconf2.cfg
-# )
+generate_dynamic_reconfigure_options(
+  cfg/CostmapProhibitionLayer.cfg
+)
 
 ###################################
 ## catkin specific configuration ##
@@ -127,6 +126,8 @@ include_directories(${catkin_INCLUDE_DIRS} include)
 
 add_library(costmap_prohibition_layer src/costmap_prohibition_layer.cpp)
 
+# Dynamic reconfigure: make sure configure headers are built before any node using them
+add_dependencies(costmap_prohibition_layer ${PROJECT_NAME}_gencfg)
 
 ############
 ## Install ##
@@ -159,6 +160,12 @@ install(DIRECTORY include/${PROJECT_NAME}/
 install(FILES
   costmap_plugins.xml
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+)
+
+install(DIRECTORY
+  cfg
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+  PATTERN ".svn" EXCLUDE
 )
 
 #############
