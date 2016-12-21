@@ -101,6 +101,8 @@ void CostmapProhibitionLayer::updateBounds(double robot_x, double robot_y, doubl
     if (!enabled_)
         return;
     
+    std::lock_guard<std::mutex> l(_data_mutex);
+    
     if (_prohibition_points.empty() && _prohibition_polygons.empty())
         return;
 
@@ -116,6 +118,8 @@ void CostmapProhibitionLayer::updateCosts(costmap_2d::Costmap2D &master_grid, in
   if (!enabled_)
     return;
 
+  std::lock_guard<std::mutex> l(_data_mutex);
+  
   // set costs of polygons
   for (int i = 0; i < _prohibition_polygons.size(); ++i)
   {
@@ -136,6 +140,8 @@ void CostmapProhibitionLayer::updateCosts(costmap_2d::Costmap2D &master_grid, in
 
 void CostmapProhibitionLayer::computeMapBounds()
 {
+  std::lock_guard<std::mutex> l(_data_mutex);
+    
   // reset bounds
   _min_x = _min_y = _max_x = _max_y = 0;
     
@@ -322,7 +328,7 @@ void CostmapProhibitionLayer::rasterizePolygon(const std::vector<PointInt>& poly
 // load prohibition positions out of the rosparam server
 bool CostmapProhibitionLayer::parseProhibitionListFromYaml(ros::NodeHandle *nhandle, const std::string &param)
 {
-  std::lock_guard<std::mutex> l(_parse_mutex);
+  std::lock_guard<std::mutex> l(_data_mutex);
   std::unordered_map<std::string, geometry_msgs::Pose> map_out;
 
   XmlRpc::XmlRpcValue param_yaml;
