@@ -2,8 +2,8 @@
 Changelog for package costmap_prohibition_layer
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.0.5 (2017-01-25)
+------------------
 * Support a rolling window map
   Enable support for rolling window maps
 

@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package>
   <name>costmap_prohibition_layer</name>
-  <version>0.0.4</version>
+  <version>0.0.5</version>
   <description>ROS-Package that implements a costmap layer to add prohibited areas to the costmap-2D by a user configuration.</description>
 
   <maintainer email="stephan.kurzawe@tu-dortmund.de">Stephan Kurzawe</maintainer>
