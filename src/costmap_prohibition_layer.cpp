@@ -275,55 +275,55 @@ void CostmapProhibitionLayer::rasterizePolygon(const std::vector<PointInt>& poly
             polygon_cells[i + 1] = swap;
 
             if(i > 0)
-            --i;
+                --i;
         }
         else
             ++i;
-        }
+    }
 
-        i = 0;
-        PointInt min_pt;
-        PointInt max_pt;
-        int min_x = polygon_cells[0].x;
-        int max_x = polygon_cells[(int)polygon_cells.size() -1].x;
+    i = 0;
+    PointInt min_pt;
+    PointInt max_pt;
+    int min_x = polygon_cells[0].x;
+    int max_x = polygon_cells[(int)polygon_cells.size() -1].x;
 
-        //walk through each column and mark cells inside the polygon
-        for(int x = min_x; x <= max_x; ++x)
+    //walk through each column and mark cells inside the polygon
+    for(int x = min_x; x <= max_x; ++x)
+    {
+        if(i >= (int)polygon_cells.size() - 1)
+            break;
+
+        if(polygon_cells[i].y < polygon_cells[i + 1].y)
         {
-            if(i >= (int)polygon_cells.size() - 1)
-                break;
-
-            if(polygon_cells[i].y < polygon_cells[i + 1].y)
-            {
-                min_pt = polygon_cells[i];
-                max_pt = polygon_cells[i + 1];
-            }
-            else
-            {
-                min_pt = polygon_cells[i + 1];
-                max_pt = polygon_cells[i];
-            }
-
-            i += 2;
-            while(i < polygon_cells.size() && polygon_cells[i].x == x)
-            {
-                if(polygon_cells[i].y < min_pt.y)
-                    min_pt = polygon_cells[i];
-                else if(polygon_cells[i].y > max_pt.y)
-                    max_pt = polygon_cells[i];
-                ++i;
-            }
-
-            PointInt pt;
-            //loop though cells in the column
-            for(int y = min_pt.y; y < max_pt.y; ++y)
-            {
-                pt.x = x;
-                pt.y = y;
-                polygon_cells.push_back(pt);
-            }
+            min_pt = polygon_cells[i];
+            max_pt = polygon_cells[i + 1];
         }
-  }
+        else
+        {
+            min_pt = polygon_cells[i + 1];
+            max_pt = polygon_cells[i];
+        }
+
+        i += 2;
+        while(i < polygon_cells.size() && polygon_cells[i].x == x)
+        {
+            if(polygon_cells[i].y < min_pt.y)
+                min_pt = polygon_cells[i];
+            else if(polygon_cells[i].y > max_pt.y)
+                max_pt = polygon_cells[i];
+            ++i;
+        }
+
+        PointInt pt;
+        //loop though cells in the column
+        for(int y = min_pt.y; y < max_pt.y; ++y)
+        {
+            pt.x = x;
+            pt.y = y;
+            polygon_cells.push_back(pt);
+        }
+    }
+}
 
 // load prohibition positions out of the rosparam server
 bool CostmapProhibitionLayer::parseProhibitionListFromYaml(ros::NodeHandle *nhandle, const std::string &param)
