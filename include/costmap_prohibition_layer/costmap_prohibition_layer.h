@@ -49,7 +49,7 @@
 #include <costmap_2d/layered_costmap.h>
 #include <costmap_prohibition_layer/CostmapProhibitionLayerConfig.h>
 #include <dynamic_reconfigure/server.h>
-
+#include <costmap_prohibition_layer/ProhibitionAreas.h>
 #include <unordered_map>
 
 namespace costmap_prohibition_layer_namespace
@@ -104,6 +104,11 @@ private:
    * overlayed reconfigure callback function
    */
   void reconfigureCB(CostmapProhibitionLayerConfig& config, uint32_t level);
+
+  /**
+   * @brief callback of the subscribed topic
+   */
+  void prohibitionAreasCB( const costmap_prohibition_layer::ProhibitionAreasConstPtr& msg);
 
   /**
    * Compute bounds in world coordinates for the current set of points and polygons.
@@ -194,6 +199,7 @@ private:
   bool getPoint(XmlRpc::XmlRpcValue& val, geometry_msgs::Point& point);
 
   dynamic_reconfigure::Server<CostmapProhibitionLayerConfig>* _dsrv;            //!< dynamic_reconfigure server for the costmap
+  ros::Subscriber _subscriber;
   std::mutex _data_mutex;                                                       //!< mutex for the accessing _prohibition_points and _prohibition_polygons
   double _costmap_resolution;                                                   //!< resolution of the overlayed costmap to create the thinnest line out of two points
   bool _fill_polygons;                                                          //!< if true, all cells that are located in the interior of polygons are marked as obstacle as well

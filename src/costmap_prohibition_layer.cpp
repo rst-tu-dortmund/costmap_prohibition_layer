@@ -46,7 +46,7 @@ using costmap_2d::LETHAL_OBSTACLE;
 namespace costmap_prohibition_layer_namespace
 {
     
-CostmapProhibitionLayer::CostmapProhibitionLayer() : _dsrv(NULL)
+CostmapProhibitionLayer::CostmapProhibitionLayer() : _dsrv(nullptr)
 {
 }
 
@@ -65,6 +65,9 @@ void CostmapProhibitionLayer::onInitialize()
   dynamic_reconfigure::Server<CostmapProhibitionLayerConfig>::CallbackType cb =
       boost::bind(&CostmapProhibitionLayer::reconfigureCB, this, _1, _2);
   _dsrv->setCallback(cb);
+
+  _subscriber = nh.subscribe("prohibition_areas_update",10,
+                             &CostmapProhibitionLayer::prohibitionAreasCB, this);
 
   // get a pointer to the layered costmap and save resolution
   costmap_2d::Costmap2D *costmap = layered_costmap_->getCostmap();
@@ -92,6 +95,42 @@ void CostmapProhibitionLayer::reconfigureCB(CostmapProhibitionLayerConfig &confi
 {
   enabled_ = config.enabled;
   _fill_polygons = config.fill_polygons;
+}
+
+void CostmapProhibitionLayer::prohibitionAreasCB(const costmap_prohibition_layer::ProhibitionAreasConstPtr &msg)
+{
+    std::lock_guard<std::mutex> l(_data_mutex);
+
+    _fill_polygons = msg->fill_polygons;
+    _prohibition_points.clear();
+    _prohibition_polygons.clear();
+
+    for (int i=0; i< msg->polygons.size(); i++)
+    {
+        const geometry_msgs::Polygon& poly = msg->polygons[i];
+        if( poly.points.size() == 1)
+        {
+            geometry_msgs::Point point;
+            point.x = poly.points[0].x;
+            point.y = poly.points[0].y;
+            point.z = 0.0;
+            _prohibition_points.push_back( point );
+        }
+        else{
+            std::vector<geometry_msgs::Point> polygon;
+            for (int p=0; p<poly.points.size(); p++)
+            {
+                geometry_msgs::Point point;
+                point.x = poly.points[p].x;
+                point.y = poly.points[p].y;
+                point.z = 0.0;
+                polygon.push_back( point );
+            }
+            _prohibition_polygons.push_back( std::move(polygon) );
+        }
+    }
+    computeMapBounds();
+    enabled_ = true;
 }
 
 
@@ -172,10 +211,13 @@ void CostmapProhibitionLayer::computeMapBounds()
 }
 
 
-void CostmapProhibitionLayer::setPolygonCost(costmap_2d::Costmap2D &master_grid, const std::vector<geometry_msgs::Point>& polygon, unsigned char cost,
+void CostmapProhibitionLayer::setPolygonCost(costmap_2d::Costmap2D &master_grid,
+                                             const std::vector<geometry_msgs::Point>& polygon, unsigned char cost,
                                              int min_i, int min_j, int max_i, int max_j, bool fill_polygon)
 {
-    std::vector<PointInt> map_polygon;
+    static std::vector<PointInt> map_polygon;
+    map_polygon.clear();
+
     for (unsigned int i = 0; i < polygon.size(); ++i)
     {
         PointInt loc;
@@ -183,7 +225,8 @@ void CostmapProhibitionLayer::setPolygonCost(costmap_2d::Costmap2D &master_grid,
         map_polygon.push_back(loc);
     }
 
-    std::vector<PointInt> polygon_cells;
+    static std::vector<PointInt> polygon_cells;
+    polygon_cells.clear();
 
     // get the cells that fill the polygon
     rasterizePolygon(map_polygon, polygon_cells, fill_polygon);
