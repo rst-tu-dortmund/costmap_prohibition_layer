@@ -99,7 +99,7 @@ void CostmapProhibitionLayer::reconfigureCB(CostmapProhibitionLayerConfig &confi
 
 void CostmapProhibitionLayer::prohibitionAreasCB(const costmap_prohibition_layer::ProhibitionAreasConstPtr &msg)
 {
-    std::lock_guard<std::mutex> l(_data_mutex);
+    //std::lock_guard<std::mutex> l(_data_mutex);
 
     _fill_polygons = msg->fill_polygons;
     _prohibition_points.clear();
