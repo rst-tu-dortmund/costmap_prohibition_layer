@@ -199,7 +199,6 @@ private:
   bool getPoint(XmlRpc::XmlRpcValue& val, geometry_msgs::Point& point);
 
   dynamic_reconfigure::Server<CostmapProhibitionLayerConfig>* _dsrv;            //!< dynamic_reconfigure server for the costmap
-  ros::Subscriber _subscriber;
   std::mutex _data_mutex;                                                       //!< mutex for the accessing _prohibition_points and _prohibition_polygons
   double _costmap_resolution;                                                   //!< resolution of the overlayed costmap to create the thinnest line out of two points
   bool _fill_polygons;                                                          //!< if true, all cells that are located in the interior of polygons are marked as obstacle as well

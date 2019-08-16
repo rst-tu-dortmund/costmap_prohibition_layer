@@ -9,6 +9,8 @@ find_package(catkin REQUIRED COMPONENTS
   dynamic_reconfigure
   roscpp
   geometry_msgs
+  std_msgs
+  message_generation
 )
 
 ## System dependencies are found with CMake's conventions
@@ -46,8 +48,8 @@ endif()
 ## Generate added messages and services with any dependencies listed here
  generate_messages(
    DEPENDENCIES
-   geometry_msgs
    std_msgs
+   geometry_msgs
  )
 
 ################################################
@@ -81,7 +83,7 @@ generate_dynamic_reconfigure_options(
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES costmap_prohibition_layer
-  CATKIN_DEPENDS costmap_2d dynamic_reconfigure
+  CATKIN_DEPENDS costmap_2d dynamic_reconfigure std_msgs geometry_msgs message_runtime
   DEPENDS
 )
 

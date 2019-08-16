@@ -66,7 +66,7 @@ void CostmapProhibitionLayer::onInitialize()
       boost::bind(&CostmapProhibitionLayer::reconfigureCB, this, _1, _2);
   _dsrv->setCallback(cb);
 
-  _subscriber = nh.subscribe("prohibition_areas_update",10,
+  ros::Subscriber _sub = nh.subscribe("prohibition_areas_update",10,
                              &CostmapProhibitionLayer::prohibitionAreasCB, this);
 
   // get a pointer to the layered costmap and save resolution
